@@ -24,6 +24,10 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 """
+import ruyaml
+#ruamel.yaml.scalarstring.DoubleQuotedScalarString('hello world')
+# This isn't properly quoting some special abilities, leading to the monsters not rendering
+# I may need to build the output as a dict and then dump it as YAML.
 
 # TODO
 # Align tagging with TTRPG convention
@@ -39,6 +43,15 @@ from copy import deepcopy
 import regex as re
 from pathlib import Path
 import os
+
+def to_desc(txt, file):
+    s=str(txt).encode('unicode_escape').decode('ASCII')
+    print('    desc:', '"'+s+'"', file=file)
+
+
+def wq(s):
+    return '"' + s + '"'
+
 
 def write_monster(monster_in, filename=None, source_dict=None, keys_used=None, url=None):
     """Write monster information in dict to supplied file or stdout.
@@ -105,7 +118,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
 
     if keys_used is not None: keys_used['classes'] = True
     if 'classes' in monster_in:
-        print('class:', ', '.join(monster_in['classes']), file=f)
+        print('class:', wq(', '.join(monster_in['classes'])), file=f)
 
     if keys_used is not None: keys_used['alignment'] = True
     print('alignment:', monster_in['alignment'], file=f)
@@ -118,7 +131,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
 
     if keys_used is not None: keys_used['subtypes'] = True
     if 'subtypes' in monster_in: 
-        print('subtype: (' + ', '.join(monster_in['subtypes']) + ')', file=f)
+        print('subtype: ' + wq('(' + ', '.join(monster_in['subtypes']) + ')'), file=f)
 
     # this can be a list
     if keys_used is not None: keys_used['initiative'] = True
@@ -140,14 +153,14 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
                 senses.append(key + ' ' + str(monster_in['senses'][key]))
             else:
                 senses.append(key)
-        print('senses:', ', '.join(senses), file=f)
+        print('senses:', wq(', '.join(senses)), file=f)
 
     if keys_used is not None: keys_used['auras'] = True
     if 'auras' in monster_in:
         aura = []
         for a in monster_in['auras']:
             aura.append(a['name'])
-        print('aura:', ', '.join(aura), file=f)
+        print('aura:', wq(', '.join(aura)), file=f)
 
     if keys_used is not None: keys_used['AC'] = True
     ac = str(monster_in['AC']['AC']) + ', touch ' + str(monster_in['AC']['touch']) + ', flat-footed ' + str(monster_in['AC']['flat_footed'])
@@ -160,7 +173,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
             else:
                 at_end = at_end + '; ' + ', '.join(monster_in['AC']['components'][key])
         ac = ac + ' (' + ', '.join(ac_bonuses) + at_end + ')'
-    print('AC:', ac, file=f)
+    print('AC:', wq(ac), file=f)
 
     if keys_used is not None: keys_used['HP'] = True
     hp_special = []
@@ -168,38 +181,38 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
         if key != 'HP' and key != 'long':
             hp_special.append( key.replace('_', ' ') + ' ' + str(monster_in['HP'][key]))
     print('HP:', str(monster_in['HP']['HP']), file=f)
-    print('HP_extra:', '; '.join(hp_special), file=f)
+    print('HP_extra:', wq('; '.join(hp_special)), file=f)
 
     if keys_used is not None: keys_used['HD'] = True
     print('HD:', monster_in['HP']['long'], file=f)
 
     if keys_used is not None: keys_used['saves'] = True
-    print('saves: Fort ' + '{0:+}'.format(monster_in['saves']['fort']) + ', Ref ' + '{0:+}'.format(monster_in['saves']['ref']) + 
-        ', Will ' + '{0:+}'.format(monster_in['saves']['will']), file=f)
+    print('saves:', wq('Fort ' + '{0:+}'.format(monster_in['saves']['fort']) + ', Ref ' + '{0:+}'.format(monster_in['saves']['ref']) + 
+        ', Will ' + '{0:+}'.format(monster_in['saves']['will'])), file=f)
     if 'other' in monster_in['saves']:
-        print('saves_other:', monster_in['saves']['other'], file=f)
+        print('saves_other:', wq(monster_in['saves']['other']), file=f)
         
     if keys_used is not None: keys_used['immunities'] = True
     if 'immunities' in monster_in:
-        print('immune:', ', '.join(monster_in['immunities']), file=f)
+        print('immune:', wq(', '.join(monster_in['immunities'])), file=f)
 
     if keys_used is not None: keys_used['resistances'] = True
     if 'resistances' in monster_in:
         resist = []
         for key in monster_in['resistances']:
             resist.append(key + ' ' + str(monster_in['resistances'][key]))
-        print('resist:', ', '.join(resist), file=f)
+        print('resist:', wq(', '.join(resist)), file=f)
     
     if keys_used is not None: keys_used['DR'] = True
     if 'DR' in monster_in:
         dr = []
         for dr_source in monster_in['DR']:
             dr.append(str(dr_source['amount']) + '/' + dr_source['weakness'])
-        print('DR:', ', '.join(dr), file=f)
+        print('DR:', wq(', '.join(dr)), file=f)
     
     if 'defensive_abilities' in monster_in:
         if keys_used is not None: keys_used['defensive_abilities'] = True
-        print('defensive_abilities:', ', '.join(monster_in['defensive_abilities']), file=f)
+        print('defensive_abilities:', wq(', '.join(monster_in['defensive_abilities'])), file=f)
 
     if keys_used is not None: keys_used['SR'] = True
     if 'SR' in monster_in:
@@ -207,7 +220,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
 
     if keys_used is not None: keys_used['weaknesses'] = True
     if 'weaknesses' in monster_in:
-        print('weak:', ', '.join(monster_in['weaknesses']), file=f)
+        print('weak:', wq(', '.join(monster_in['weaknesses'])), file=f)
 
     if keys_used is not None: keys_used['speeds'] = True
     speed = []
@@ -228,21 +241,21 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
             speed.append(' ' + str(monster_in['speeds'][key]))
         else:
             speed.append(key + ' ' + str(monster_in['speeds'][key]) + ' ft.')
-    print( 'speed:', ', '.join(speed), file=f)
+    print( 'speed:', wq(', '.join(speed)), file=f)
 
     if keys_used is not None: keys_used['attacks'] = True
     if 'attacks' in monster_in and 'melee' in monster_in['attacks']:
         melee = []
         for m in monster_in['attacks']['melee'][0]:
             melee.append(m['text'])
-        print('melee:', ', '.join(melee), file=f)
+        print('melee:', wq(', '.join(melee)), file=f)
     if 'attacks' in monster_in and 'ranged' in monster_in['attacks']:
         ranged = []
         for r in monster_in['attacks']['ranged'][0]:
             ranged.append(r['text'])
-        print('ranged:', ', '.join(ranged), file=f)
+        print('ranged:', wq(', '.join(ranged)), file=f)
     if 'attacks' in monster_in and 'special' in monster_in['attacks']:
-        print('special_attacks:', ', '.join(monster_in['attacks']['special']), file=f)
+        print('special_attacks:', wq(', '.join(monster_in['attacks']['special'])), file=f)
 
     if keys_used is not None: keys_used['space'] = True
     if 'space' in monster_in:
@@ -263,7 +276,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
         print('tactics:', file=f)
         for k in monster_in['tactics']:
             print('  - name:', k, file=f)
-            print('    desc:', monster_in['tactics'][k], file=f)
+            to_desc( monster_in['tactics'][k], f)
 
     if keys_used is not None: keys_used['ability_scores'] = True
     stats = [str(monster_in['ability_scores']['STR']),
@@ -296,7 +309,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
         feats = []
         for feat in monster_in['feats']:
             feats.append(feat['name'])
-        print('feats:', ', '.join(feats), file=f)
+        print('feats:', wq(', '.join(feats)), file=f)
 
     if keys_used is not None: keys_used['skills'] = True
     if 'skills' in monster_in:
@@ -310,8 +323,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
             else:
                 val = '{0:+}'.format(monster_in['skills'][key]['_'])
             skills.append( key + ' ' + val)
-        print('skills:', ', '.join(skills), file=f)
-
+        print('skills:', wq(', '.join(skills)), file=f)
 
         if '_racial_mods' in monster_in['skills']:
             print( 'racial_modifiers:', file=f)
@@ -334,40 +346,40 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
 
     if keys_used is not None: keys_used['languages'] = True
     if 'languages' in monster_in:
-        print( 'languages:', ', '.join(monster_in['languages']), file=f)
+        print( 'languages:', wq(', '.join(monster_in['languages'])), file=f)
     
     if keys_used is not None: keys_used['special_qualities'] = True
     if 'special_qualities' in monster_in:
-        print( 'special_qualities:', ', '.join(monster_in['special_qualities']), file=f)
+        print( 'special_qualities:', wq(', '.join(monster_in['special_qualities'])), file=f)
 
     if keys_used is not None: keys_used['gear'] = True
     if 'gear' in monster_in:
         print('gear:', file=f)
         for k in monster_in['gear']:
             print('  - name:', k, file=f)
-            print('    desc:', ', '.join(monster_in['gear'][k]), file=f)
+            to_desc( ', '.join(monster_in['gear'][k]), f)
 
     if keys_used is not None: keys_used['ecology'] = True
     if 'ecology' in monster_in:
         print("ecology:", file=f)
         if 'environment' in monster_in['ecology']:
             print('  - name: Environment', file=f)
-            print('    desc:', monster_in['ecology']['environment'], file=f)
+            to_desc( monster_in['ecology']['environment'], f)
         if 'organization' in monster_in['ecology']:
             print('  - name: Organisation', file=f)
-            print('    desc:', monster_in['ecology']['organization'], file=f) 
+            to_desc( monster_in['ecology']['organization'], f)
         if 'treasure' in monster_in['ecology'] and 'treasure_type' in monster_in['ecology']:
             print('  - name: Treasure', file=f)
-            print('    desc: ' + monster_in['ecology']['treasure_type'] + ' (' + ', '.join(monster_in['ecology']['treasure']) + ')', file=f)
+            to_desc( monster_in['ecology']['treasure_type'] + ' (' + ', '.join(monster_in['ecology']['treasure']) + ')', f)
         elif 'treasure_type' in monster_in['ecology']:
-            print('    desc: ' + monster_in['ecology']['treasure_type'], file=f)
+            to_desc( monster_in['ecology']['treasure_type'], f)
     
     if keys_used is not None: keys_used['special_abilities'] = True
     if 'special_abilities' in monster_in:
         print('special_abilities:', file=f)
         for sa in monster_in['special_abilities'].keys():
             print('  - name:', sa, file=f)
-            print('    desc:', monster_in['special_abilities'][sa], file=f)
+            to_desc(monster_in['special_abilities'][sa], f)
 
     if keys_used is not None: keys_used['spells'] = True
     if 'spells' in monster_in:
@@ -376,7 +388,8 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
                 print('spells_prepared:', file=f)
             elif source['type'] == 'known':
                 print('known_spells:', file=f)
-            print('  - name:\n    desc: (CL ' + str(source['CL']) + ')', file=f)
+            print('  - name:', file=f)
+            to_desc( '(CL ' + str(source['CL']) + ')', f)
             spells = {}
             for entry in monster_in['spells']['entries']:
                 this_count = ""
@@ -405,14 +418,14 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
                     else:
                         header = header + ' (' + str(source['slots'][key]) + '/day)'
                 print('  - name:', header, file=f)
-                print('    desc:', spells[key], file=f)
+                to_desc( spells[key], f)
 
     if keys_used is not None: keys_used['psychic_magic'] = True
     if 'psychic_magic' in monster_in:
         for source in monster_in['psychic_magic']['sources']:
             print('psychic_magic:', file=f)
             print('  - name:', file=f)
-            print('    desc: (CL ' + str(source['CL']) + '; Concentration ' + '{0:+})'.format(source['concentration']), file=f)
+            to_desc( str(source['CL']) + '; Concentration ' + '{0:+})'.format(source['concentration']), f)
             psychic_magic = []
             for entry in monster_in['psychic_magic']['entries']:
                 this_dc = ""
@@ -423,8 +436,7 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
                 else:
                     psychic_magic.append(entry['name'])
             print('  - name:', monster_in['psychic_magic']['PE'], 'PE', file=f)
-            print('    desc:', ', '.join(psychic_magic), file=f)
-
+            to_desc( ', '.join(psychic_magic), f)
 
     if keys_used is not None: keys_used['spell_like_abilities'] = True
     if 'spell_like_abilities' in monster_in:
@@ -435,9 +447,9 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
             else:
                 print('  - name:', source['name'], file=f)
             if 'concentration' in source:
-                print('    desc: (CL ' + str(source['CL']) + '; Concentration ' + '{0:+})'.format(source['concentration']), file=f)
+                to_desc( '(CL ' + str(source['CL']) + '; Concentration ' + '{0:+})'.format(source['concentration']), f)
             else:
-                print('    desc: (CL ' + str(source['CL']) + ')', file=f)
+                to_desc( '(CL ' + str(source['CL']) + ')', f)
             sla = {}
             for entry in monster_in['spell_like_abilities']['entries']:
                 if entry['source'] != source['name']:
@@ -456,14 +468,14 @@ def write_monster_to_file(monster_in, f, source_dict=None, keys_used=None, url=N
                     sla[entry['freq']] = entry['name'] + dc
             for key in sla.keys():
                 print('  - name:', key, file=f)
-                print('    desc:', sla[key], file=f)
+                to_desc( sla[key], f)
     
     if keys_used is not None: keys_used['sources'] = True
     if 'sources' in monster_in:
         print('sources:', file=f)
         for source in monster_in['sources']:
-            print('  - name:', source['name'].replace('#', 'No. '), file=f)
-            print('    desc:', str(source['page']), file=f)
+            print('  - name:', wq(source['name'].replace('#', 'No. ')), file=f)
+            to_desc( str(source['page']), f)
 
     if keys_used is not None: keys_used['desc_short'] = True
     if 'desc_short' in monster_in:
